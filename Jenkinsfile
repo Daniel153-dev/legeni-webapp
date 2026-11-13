@@ -37,10 +37,28 @@ pipeline {
                 sh '''
                     docker network create $CI_NETWORK
                     docker run -d --name $TEST_CONTAINER --network $CI_NETWORK $IMAGE:$VERSION
-                    docker run --rm --network $CI_NETWORK curlimages/curl:8.11.1 \
-                        -sf --retry 10 --retry-connrefused --retry-delay 1 http://$TEST_CONTAINER:5000/health
-                    docker run --rm --network $CI_NETWORK curlimages/curl:8.11.1 \
-                        -sf http://$TEST_CONTAINER:5000/ | grep -q "Version $VERSION"
+                    
+                    # Test de santé avec Python (image déjà en cache, pas de téléchargement externe)
+                    docker run --rm --network $CI_NETWORK python:3.12-slim python3 -c "
+import urllib.request, time
+for i in range(15):
+    try:
+        res = urllib.request.urlopen('http://$TEST_CONTAINER:5000/health')
+        if res.code == 200:
+            print('Health check OK')
+            break
+    except Exception as e:
+        time.sleep(1)
+else:
+    exit(1)
+"
+                    # Vérification de la version dans la page d'accueil
+                    docker run --rm --network $CI_NETWORK python:3.12-slim python3 -c "
+import urllib.request
+html = urllib.request.urlopen('http://$TEST_CONTAINER:5000/').read().decode('utf-8')
+assert 'Version $VERSION' in html, 'Version non trouvee dans la page'
+print('Validation de la version reussie !')
+"
                 '''
             }
         }
