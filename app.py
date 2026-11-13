@@ -79,6 +79,19 @@ class RedisCounter:
             return False
 
 
+def build_counter():
+    host = os.getenv("REDIS_HOST")
+    if host:
+        return RedisCounter(
+            host, int(os.getenv("REDIS_PORT", "6379")), os.getenv("REDIS_PASSWORD") or None
+        )
+    return MemoryCounter()
+
+
+def create_app(counter=None):
+    app = Flask(__name__)
+    app.config["COUNTER"] = counter or build_counter()
+
     def info():
         return {
             "app": "legeni-webapp",
