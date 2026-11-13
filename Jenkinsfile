@@ -94,7 +94,9 @@ print('Validation de la version reussie !')
 
     post {
         always {
-            sh 'docker rm -f $TEST_CONTAINER || true; docker network rm $CI_NETWORK || true'
+            script {
+                sh 'docker rm -f $TEST_CONTAINER || true; docker network rm $CI_NETWORK || true'
+            }
         }
         success {
             echo "Pipeline exécuté et validé avec succès sur la branche ${env.BRANCH_NAME} !"
