@@ -8,7 +8,8 @@ pipeline {
 
     environment {
         IMAGE          = "${params.DOCKERHUB_ID}/legeni-webapp"
-        VERSION        = "1.0.${env.BUILD_NUMBER}"
+        // Version dynamique : si c'est main -> 1.0.X, sinon nom_de_branche-numero_de_build
+        VERSION        = "${env.BRANCH_NAME == 'main' ? '1.0.' + env.BUILD_NUMBER : env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9.-]', '-') + '-' + env.BUILD_NUMBER}"
         TEST_CONTAINER = "webapp-ci-${env.BUILD_NUMBER}"
         CI_NETWORK     = "ci-net-${env.BUILD_NUMBER}"
     }
@@ -63,7 +64,11 @@ print('Validation de la version reussie !')
         }
 
         stage('Push Docker Hub') {
-            when { expression { params.PUSH } }
+            // Le push ne s'exécute QUE si on est sur la branche main ET que le paramètre PUSH est à true
+            when { 
+                branch 'main'
+                expression { params.PUSH } 
+            }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub',
                                                   usernameVariable: 'DH_USER',
@@ -79,7 +84,7 @@ print('Validation de la version reussie !')
                             }
                         } catch (Exception e) {
                             currentBuild.result = 'SUCCESS'
-                            echo "AVERTISSEMENT : Le push vers Docker Hub a échoué à cause d'une instabilité réseau externe (EOF), mais le code et les tests sont validés avec succès !"
+                            echo "AVERTISSEMENT : Le push vers Docker Hub a échoué (EOF réseau), mais les tests sont validés !"
                         }
                     }
                 }
@@ -92,10 +97,11 @@ print('Validation de la version reussie !')
             sh 'docker rm -f $TEST_CONTAINER || true; docker network rm $CI_NETWORK || true'
         }
         success {
-            echo "Pipeline exécuté et validé avec succès !"
+            echo "Pipeline exécuté et validé avec succès sur la branche ${env.BRANCH_NAME} !"
         }
         failure {
-            echo "Échec du pipeline : consultez la console de l'étape en rouge"
+            echo "Échec du pipeline sur la branche ${env.BRANCH_NAME}"
         }
     }
 }
+EOF
