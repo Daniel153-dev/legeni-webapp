@@ -104,4 +104,3 @@ print('Validation de la version reussie !')
         }
     }
 }
-EOF
