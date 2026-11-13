@@ -20,7 +20,7 @@ PAGE = """<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>echec de build </title>
+  <title>Legeni WebApp</title>
   <style>
     body { font-family: sans-serif; margin: 0; background: #f4f6f8; }
     header { background: {{ color }}; color: #fff; padding: 2rem; }
@@ -78,19 +78,6 @@ class RedisCounter:
         except Exception:
             return False
 
-
-def build_counter():
-    host = os.getenv("REDIS_HOST")
-    if host:
-        return RedisCounter(
-            host, int(os.getenv("REDIS_PORT", "6379")), os.getenv("REDIS_PASSWORD") or None
-        )
-    return MemoryCounter()
-
-
-def create_app(counter=None):
-    app = Flask(__name__)
-    app.config["COUNTER"] = counter or build_counter()
 
     def info():
         return {
