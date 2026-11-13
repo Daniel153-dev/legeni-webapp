@@ -20,7 +20,7 @@ PAGE = """<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Legeni WebApp</title>
+  <title>echec de build </title>
   <style>
     body { font-family: sans-serif; margin: 0; background: #f4f6f8; }
     header { background: {{ color }}; color: #fff; padding: 2rem; }
