@@ -22,6 +22,7 @@ pipeline {
     stages {
         stage('Tests unitaires') {
             steps {
+                sh 'docker pull python:3.12-slim || true'
                 sh 'docker build --target test -t legeni-webapp:test .'
             }
         }
@@ -38,7 +39,6 @@ pipeline {
                     docker network create $CI_NETWORK
                     docker run -d --name $TEST_CONTAINER --network $CI_NETWORK $IMAGE:$VERSION
                     
-                    # Test de santé avec Python (image déjà en cache, pas de téléchargement externe)
                     docker run --rm --network $CI_NETWORK python:3.12-slim python3 -c "
 import urllib.request, time
 for i in range(15):
@@ -52,7 +52,6 @@ for i in range(15):
 else:
     exit(1)
 "
-                    # Vérification de la version dans la page d'accueil
                     docker run --rm --network $CI_NETWORK python:3.12-slim python3 -c "
 import urllib.request
 html = urllib.request.urlopen('http://$TEST_CONTAINER:5000/').read().decode('utf-8')
@@ -69,11 +68,13 @@ print('Validation de la version reussie !')
                 withCredentials([usernamePassword(credentialsId: 'dockerhub',
                                                   usernameVariable: 'DH_USER',
                                                   passwordVariable: 'DH_TOKEN')]) {
-                    sh '''
-                        echo "$DH_TOKEN" | docker login -u "$DH_USER" --password-stdin
-                        docker push $IMAGE:$VERSION
-                        docker push $IMAGE:latest
-                    '''
+                    retry(3) {
+                        sh '''
+                            echo "$DH_TOKEN" | docker login -u "$DH_USER" --password-stdin
+                            docker push $IMAGE:$VERSION
+                            docker push $IMAGE:latest
+                        '''
+                    }
                 }
             }
         }
