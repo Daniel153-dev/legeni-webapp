@@ -31,8 +31,10 @@ pipeline {
         stage('Initialisation') {
             steps {
                 script {
-                    env.VERSION = env.BRANCH_NAME == 'main' ? "1.0.${env.BUILD_NUMBER}" : "${env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9.-]', '-')}-${env.BUILD_NUMBER}"
-                    echo "Version du build : ${env.VERSION}"
+                    def rawBranch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main'
+                    env.CURRENT_BRANCH = rawBranch.replaceFirst('^origin/', '')
+                    env.VERSION = (env.CURRENT_BRANCH == 'main') ? "1.0.${env.BUILD_NUMBER}" : "${env.CURRENT_BRANCH.replaceAll('[^a-zA-Z0-9.-]', '-')}-${env.BUILD_NUMBER}"
+                    echo "Branche : ${env.CURRENT_BRANCH} | Version du build : ${env.VERSION}"
                 }
             }
         }
@@ -122,7 +124,7 @@ print("Validation de la version reussie !")
         }
 
         stage('Validation production') {
-            when { branch 'main' }
+            when { expression { return env.CURRENT_BRANCH == 'main' } }
             steps {
                 timeout(time: 15, unit: 'MINUTES') {
                     input message: "Déployer la version ${VERSION} en production ?", ok: 'Déployer'
@@ -131,7 +133,7 @@ print("Validation de la version reussie !")
         }
 
         stage('Déploiement production') {
-            when { branch 'main' }
+            when { expression { return env.CURRENT_BRANCH == 'main' } }
             environment {
                 REDIS_PASSWORD = credentials('redis-password-prod')
             }
@@ -164,9 +166,8 @@ print("Validation de la version reussie !")
 
         stage('Push Docker Hub') {
             when {
-                branch 'main'
                 expression {
-                    return params.PUSH
+                    return env.CURRENT_BRANCH == 'main' && params.PUSH
                 }
             }
 
@@ -203,11 +204,11 @@ print("Validation de la version reussie !")
         }
 
         success {
-            echo "✅ Pipeline exécuté, validé et déployé sur la branche ${env.BRANCH_NAME} !"
+            echo "✅ Pipeline exécuté, validé et déployé sur la branche ${env.CURRENT_BRANCH} !"
         }
 
         failure {
-            echo "❌ Échec du pipeline sur la branche ${env.BRANCH_NAME}"
+            echo "❌ Échec du pipeline sur la branche ${env.CURRENT_BRANCH}"
         }
     }
 }
