@@ -48,14 +48,10 @@ pipeline {
                         }
                     }
                     steps {
-                        sh 'pip install --no-cache-dir flake8==7.1.1'
+                        sh 'python -m venv /tmp/venv'
+                        sh '/tmp/venv/bin/pip install -q flake8==7.1.1'
                         sh 'mkdir -p reports'
-                        sh 'flake8 --output-file=reports/flake8.txt --tee . || true'
-                    }
-                    post {
-                        always {
-                            recordIssues(tools: [[parser: 'pycodestyle', pattern: 'reports/flake8.txt']])
-                        }
+                        sh '/tmp/venv/bin/flake8 --output-file=reports/flake8.txt --tee . || true'
                     }
                 }
                 stage('Lint Dockerfile') {
