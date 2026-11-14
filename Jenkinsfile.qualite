@@ -48,12 +48,10 @@ pipeline {
                         }
                     }
                     steps {
-                        sh '''
-                            python -m venv /tmp/venv
-                            /tmp/venv/bin/pip install -q flake8==7.1.1
-                            mkdir -p reports
-                            /tmp/venv/bin/flake8 --output-file=reports/flake8.txt --tee . || true
-                        '''
+                        sh 'python -m venv /tmp/venv'
+                        sh '/tmp/venv/bin/pip install -q flake8==7.1.1'
+                        sh 'mkdir -p reports'
+                        sh '/tmp/venv/bin/flake8 --output-file=reports/flake8.txt --tee . || true'
                     }
                     post {
                         always {
