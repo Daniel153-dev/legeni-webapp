@@ -49,15 +49,16 @@ pipeline {
                     }
                     steps {
                         sh 'python -m venv /tmp/venv'
-                        sh '/tmp/venv/bin/pip install -q flake8==7.1.1'
+                        // On installe flake8 et le plugin de formatage checkstyle pour générer du XML valide
+                        sh '/tmp/venv/bin/pip install -q flake8==7.1.1 flake8-checkstyle==0.4.0'
                         sh 'mkdir -p reports'
-                        // On génère le rapport flake8 sans faire planter le build en cas d'avertissements
-                        sh '/tmp/venv/bin/flake8 --output-file=reports/flake8.txt --tee . || true'
+                        // On génère le rapport au format checkstyle (XML) attendu par recordIssues
+                        sh '/tmp/venv/bin/flake8 --format=checkstyle --output-file=reports/flake8-checkstyle.xml . || true'
                     }
                     post {
                         always {
-                            // Utilisation du parser générique 'checkstyle' natif pour lire le rapport flake8
-                            recordIssues(tools: [[parser: 'checkstyle', pattern: 'reports/flake8.txt']])
+                            // Analyse du fichier XML généré par le parser natif checkstyle
+                            recordIssues(tools: [[parser: 'checkstyle', pattern: 'reports/flake8-checkstyle.xml']])
                         }
                     }
                 }
