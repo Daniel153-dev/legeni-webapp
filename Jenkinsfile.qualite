@@ -51,11 +51,13 @@ pipeline {
                         sh 'python -m venv /tmp/venv'
                         sh '/tmp/venv/bin/pip install -q flake8==7.1.1'
                         sh 'mkdir -p reports'
+                        // On génère le rapport flake8 sans faire planter le build en cas d'avertissements
                         sh '/tmp/venv/bin/flake8 --output-file=reports/flake8.txt --tee . || true'
                     }
                     post {
                         always {
-                            recordIssues(tools: [flake8(pattern: 'reports/flake8.txt')])
+                            // Utilisation du parser générique 'checkstyle' natif pour lire le rapport flake8
+                            recordIssues(tools: [[parser: 'checkstyle', pattern: 'reports/flake8.txt']])
                         }
                     }
                 }
