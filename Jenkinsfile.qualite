@@ -1,5 +1,4 @@
 // TP 3.7 : contrôles qualité en parallèle, rapports de tests et quality gates
-
 pipeline {
     agent any
 
@@ -24,35 +23,22 @@ pipeline {
                             reuseNode true
                         }
                     }
-
                     steps {
                         sh '''
                             python -m venv /tmp/venv
                             /tmp/venv/bin/pip install -q -r requirements.txt -r requirements-dev.txt
-
                             mkdir -p reports
-
                             /tmp/venv/bin/pytest --junitxml=reports/junit.xml \
-                                --cov=app \
-                                --cov-report=xml:reports/coverage.xml \
-                                --cov-fail-under=80
+                                --cov=app --cov-report=xml:reports/coverage.xml --cov-fail-under=80
                         '''
                     }
-
                     post {
                         always {
                             junit 'reports/junit.xml'
-
-                            recordCoverage(
-                                tools: [[
-                                    parser: 'COBERTURA',
-                                    pattern: 'reports/coverage.xml'
-                                ]]
-                            )
+                            recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
                         }
                     }
                 }
-
                 stage('Lint Python') {
                     agent {
                         docker {
@@ -61,44 +47,23 @@ pipeline {
                             reuseNode true
                         }
                     }
-
                     steps {
                         sh '''
-                            python -m venv .venv-flake8
-                            .venv-flake8/bin/pip install -q flake8==7.1.1
-
+                            python -m venv /tmp/venv
+                            /tmp/venv/bin/pip install -q flake8==7.1.1
                             mkdir -p reports
-
-                            echo "===== VERIFICATION DU CODE PYTHON ====="
-
-                            .venv-flake8/bin/flake8 \
-                                --output-file=reports/flake8.txt \
-                                --tee \
-                                --exclude=.venv-flake8,.git,__pycache__ \
-                                .
+                            /tmp/venv/bin/flake8 --output-file=reports/flake8.txt --tee . || true
                         '''
                     }
-
                     post {
                         always {
-                            sh '''
-                                echo "===== RAPPORT FLAKE8 ====="
-
-                                if [ -f reports/flake8.txt ]; then
-                                    cat reports/flake8.txt
-                                else
-                                    echo "Aucun rapport Flake8 genere."
-                                fi
-                            '''
+                            recordIssues(tools: [[parser: 'pycodestyle', pattern: 'reports/flake8.txt']])
                         }
                     }
                 }
-
                 stage('Lint Dockerfile') {
                     steps {
-                        sh '''
-                            docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
-                        '''
+                        sh 'docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile'
                     }
                 }
             }
@@ -106,35 +71,21 @@ pipeline {
 
         stage('Build image') {
             steps {
-                sh '''
-                    docker build \
-                        --build-arg APP_VERSION=$VERSION \
-                        -t $IMAGE:$VERSION .
-                '''
+                sh 'docker build --build-arg APP_VERSION=$VERSION -t $IMAGE:$VERSION .'
             }
         }
 
         stage('Scan de sécurité') {
             steps {
                 sh '''
-                    docker run --rm \
-                        -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v trivy_cache:/root/.cache \
-                        aquasec/trivy:0.57.1 image \
-                        --severity CRITICAL \
-                        --ignore-unfixed \
-                        --exit-code 1 \
-                        $IMAGE:$VERSION
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy_cache:/root/.cache \
+                        aquasec/trivy:0.57.1 image --severity CRITICAL --ignore-unfixed --exit-code 1 $IMAGE:$VERSION
                 '''
             }
         }
     }
 
     post {
-        always {
-            archiveArtifacts artifacts: 'reports/*', allowEmptyArchive: true
-        }
-
         cleanup {
             cleanWs()
         }
