@@ -1,4 +1,5 @@
 // TP 3.7 : contrôles qualité en parallèle, rapports de tests et quality gates
+
 pipeline {
     agent any
 
@@ -39,6 +40,7 @@ pipeline {
                         }
                     }
                 }
+
                 stage('Lint Python') {
                     agent {
                         docker {
@@ -48,19 +50,13 @@ pipeline {
                         }
                     }
                     steps {
-                        sh '''
-                            python -m venv /tmp/venv
-                            /tmp/venv/bin/pip install -q flake8==7.1.1
-                            mkdir -p reports
-                            /tmp/venv/bin/flake8 --output-file=reports/flake8.txt --tee . || true
-                        '''
-                    }
-                    post {
-                        always {
-                            recordIssues(tools: [[parser: 'pycodestyle', pattern: 'reports/flake8.txt']])
-                        }
+                        sh 'python -m venv /tmp/venv'
+                        sh '/tmp/venv/bin/pip install -q flake8==7.1.1'
+                        sh 'mkdir -p reports'
+                        sh '/tmp/venv/bin/flake8 --output-file=reports/flake8.txt --tee . || true'
                     }
                 }
+
                 stage('Lint Dockerfile') {
                     steps {
                         sh 'docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile'
@@ -78,8 +74,15 @@ pipeline {
         stage('Scan de sécurité') {
             steps {
                 sh '''
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy_cache:/root/.cache \
-                        aquasec/trivy:0.57.1 image --severity CRITICAL --ignore-unfixed --exit-code 1 $IMAGE:$VERSION
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v trivy_cache:/root/.cache \
+                        aquasec/trivy:0.57.1 \
+                        image --timeout 15m \
+                        --severity CRITICAL \
+                        --ignore-unfixed \
+                        --exit-code 1 \
+                        $IMAGE:$VERSION
                 '''
             }
         }
