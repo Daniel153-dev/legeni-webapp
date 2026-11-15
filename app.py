@@ -29,7 +29,7 @@ PAGE = """<!doctype html>
   </style>
 </head>
 <body>
-  <header><h1>Legeni WebApp</h1><p>Version {{ version }}</p></header>
+  <header><h1>Legeni WebApp – B3</h1><p>Version {{ version }}</p></header>
   <main>
     <table>
       <tr><td>Environnement</td><td><b>{{ env }}</b></td></tr>
